@@ -1,0 +1,412 @@
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+<title>HATOYA Dashboard</title>
+<script type="text/javascript" src="//code.jquery.com/jquery-2.2.4.min.js"></script>
+<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/4.3.0/css/bootstrap.min.css"/>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.3.0/js/bootstrap.min.js"></script>
+
+<script type="text/javascript" src="/js/hatoya.js"></script>
+
+<link rel="shortcut icon" href="./imgs/block.png" type="image/png"/>
+<link rel="icon" href="./imgs/block.png" type="image/png"/>
+
+<style>
+html, body{
+  height: 100%;
+}
+.logo{
+  color: #f00;
+  font-weight: bold;
+}
+.subtitle{
+  color: #f00;
+  font-size: medium;
+  font-weight: bold;
+}
+#main-table{
+  height: 90%;
+}
+.unchecked{
+  background-color: #ccc;
+}
+.checked{
+  background-color: #cfc;
+}
+</style>
+<script>
+$(function(){
+  init();
+
+  $('#search_form').submit( async function(){
+    var text = $('#searchbar').val();
+    if( text ){
+      var db = $('#subtitle_span').html();
+      var isConfig = ( db == '(Config)' );
+      await searchItem( text, isConfig );
+    }
+
+    return false;
+  });
+});
+
+async function init(){
+  //. token
+  await getToken();
+  showToken();
+
+  var tr = '<tr><th><a href="#" onClick="selectLedgers();">(Ledgers)</a></th></tr>';
+  $('#db-table-body').append( tr );
+  tr = '<tr><th><a href="#" onClick="selectConfig();">(Config)</a></th></tr>';
+  $('#db-table-body').append( tr );
+
+  var result = await listDbs();
+  if( result.status ){
+    result.dbs.forEach( function( db ){
+      var tr = '<tr><th><a href="#" onClick="selectDb(\'' + db + '\');">' + db + '</a></th></tr>';
+      $('#db-table-body').append( tr );
+    });
+  }
+
+  var tr = '<tr><td><table><tr><td><input id="new-db" type="text" placeholder="new-db"/></td>'
+    + '<td><button class="btn btn-xs btn-primary" onClick="createNewDb();">New</button></td></tr></table></td></tr>';
+  $('#db-table-body').append( tr );
+
+  //. Server ID
+  var server = await readServerId();
+  if( server && server.status ){
+    var serverid = server.serverid;
+    $('#logo').prop( 'title', serverid );
+  }
+}
+
+async function getToken(){
+}
+
+async function createNewDb(){
+  var db = $('#new-db').val();
+  if( db ){
+    var result = await createDb( db );
+    location.reload();
+  }
+}
+
+async function selectLedgers(){
+  $('#subtitle_span').html( '(Ledgers)' );
+  //$('#searchbar').css( 'display', 'none' );
+  $('#subtitle_button_span').css( 'display', 'none' );
+  $('#item-list').html('<table class="table" id="item-table"><thead><tr><th>#</th><th>ledger</th></thead><tbody id="item-table-body"></tbody></table>' );
+
+  var result = await getLedgers();
+  if( result.status ){
+    for( var i = 0; i < result.ledgers.length; i ++ ){
+      var ledger = result.ledgers[i];
+      var tr = '<tr><td>' + i + '</td><td><pre>' + JSON.stringify( ledger, null, 2 ) + '</pre></td></tr>';
+      $('#item-table-body').append( tr );
+    }
+  }
+
+  $('#item-table').DataTable( { order: [ 0, "asc" ], columnDefs: [ { orderable: false, targets: [ 1 ] } ] } );
+}
+
+async function selectConfig(){
+  $('#subtitle_span').html( '(Config)' );
+  //$('#searchbar').css( 'display', 'block' );
+  $('#subtitle_button_span').css( 'display', 'none' );
+  $('#item-list').html('<table class="table" id="item-table"><thead><tr><th>#</th><th>config</th><th>actions</th></thead><tbody id="item-table-body"></tbody></table>' );
+
+  var result = await listConfigs();
+  if( result.status ){
+    for( var i = 0; i < result.configs.length; i ++ ){
+      var config = result.configs[i];
+      var tr = '<tr><td>' + i + '</td><td id="td_' + config + '" class="unchecked">' 
+
+        //. item 
+        + '<div><a href="#" id="category_' + config + '" onClick="show(\'' + config + '\',\'config\');">' + config + '</a>'
+        + '<div id="layer_' + config + '" style="display:none; position: relative; margin-left: 15pt;" class="close"></div></div>'
+
+        + '</td><td><button class="btn btn-xs btn-success" onClick="editItem(\'' + config + '\', \'config\');">Edit</button>'
+        + '<button class="btn btn-xs btn-warning" onClick="confirmDeleteConfig(\'' + config + '\');">Del</button>'
+
+        + '</td></tr>';
+      $('#item-table-body').append( tr );
+    }
+  }
+
+  var tr = '<tr><td>New</td><td><textarea id="new-config" class="form-control">{\n  "name":"name",\n  "serverid":"1234567890",\n  "remote_addr":"192.168.0.1",\n  "url":"http://192.168.0.100",\n  "cron":"* * * * *"\n}</textarea></td>'
+    + '<td><button id="new-config-button" class="btn btn-xs btn-primary" onClick="createNewConfig();">Save</button></td></tr>';
+  $('#item-table-body').append( tr );
+
+  $('#item-table').DataTable( { order: [ 0, "asc" ], columnDefs: [ { orderable: false, targets: [ 1, 2 ] } ] } );
+}
+
+async function selectDb( db ){
+  $('#subtitle_span').html( db );
+  //$('#searchbar').css( 'display', 'block' );
+  $('#item-list').html('<table class="table" id="item-table"><thead><tr><th>#</th><th>items</th><th>actions</th></thead><tbody id="item-table-body"></tbody></table>' );
+  $('#subtitle_button_span').css( 'display', 'block' );
+
+  var result = await listItems( db );
+  if( result.status ){
+    for( var i = 0; i < result.items.length; i ++ ){
+      var item = result.items[i];
+      var tr = '<tr><td>' + i + '</td><td id="td_' + item + '" class="unchecked">' 
+
+        //. item 
+        + '<div><a href="#" id="category_' + item + '" onClick="show(\'' + item + '\');">' + item + '</a>'
+        + '<div id="layer_' + item + '" style="display:none; position: relative; margin-left: 15pt;" class="close"></div></div>'
+
+        + '</td><td><button class="btn btn-xs btn-success" onClick="editItem(\'' + item + '\');">Edit</button>'
+        + '<button class="btn btn-xs btn-warning" onClick="confirmDeleteItem(\'' + db + '\', \'' + item + '\');">Del</button>'
+
+        + '</td></tr>';
+      $('#item-table-body').append( tr );
+    }
+  }
+
+  var tr = '<tr><td>New</td><td><textarea id="new-item" class="form-control">{\n  "name":"name",\n  "age":30\n}</textarea></td>'
+    + '<td><button id="new-item-button" class="btn btn-xs btn-primary" onClick="createNewItem(\'' + db + '\');">Save</button></td></tr>';
+  $('#item-table-body').append( tr );
+
+  $('#item-table').DataTable( { order: [ 0, "asc" ], columnDefs: [ { orderable: false, targets: [ 1, 2 ] } ] } );
+}
+
+async function createNewConfig(){
+  var config = $('#new-config').val();
+  config = JSON.parse( config );
+  if( config ){
+    if( config.id ){
+      var result = await updateConfig( config, config.id );
+      if( result && result.status ){
+        await selectConfig();
+      }
+    }else{
+      var result = await createConfig( config );
+      if( result && result.status ){
+        await selectConfig();
+      }
+    }
+  }
+}
+
+async function createNewItem( db ){
+  var item = $('#new-item').val();
+  item = JSON.parse( item );
+  if( db && item ){
+    if( item.id ){
+      var result = await updateItem( db, item, item.id );
+      if( result.status ){
+        selectDb( db );
+      }
+    }else{
+      var result = await createItem( db, item );
+      if( result.status ){
+        selectDb( db );
+      }
+    }
+  }
+}
+
+async function editItem( id, isConfig ){
+  $('#new-item').html( '' );
+
+  var db = isConfig ? 'config' : $('#subtitle_span').html();
+  var result = await readItem( db, id );
+  if( result && result.status ){
+    if( isConfig ){
+      $('#new-config').html( JSON.stringify( result.config, null, 2 ) );
+    }else{
+      $('#new-item').html( JSON.stringify( result.item, null, 2 ) );
+    }
+  }
+}
+
+async function confirmDeleteDb(){
+  var db = $('#subtitle_span').html();
+  if( confirm( 'You are going to delete database: ' + db + '\nOK?' ) ){
+    var result = await deleteDb( db );
+    location.reload();
+  }
+}
+
+async function confirmDeleteConfig( id ){
+  if( confirm( 'You are going to delete config.\nOK?' ) ){
+    var result = await deleteConfig( id );
+    location.reload();
+  }
+}
+
+async function confirmDeleteItem( db, id ){
+  if( confirm( 'You are going to delete item: ' + id + '\nOK?' ) ){
+    var result = await deleteItem( db, id );
+    if( result.status ){
+      selectDb( db );
+    }
+  }
+}
+
+async function searchItem( text, isConfig ){
+  var db = isConfig ? 'config' : $('#subtitle_span').html();
+  var result = await search( db, text );
+  if( result && result.status ){
+    $('#item-table-body').html( '' );
+    result.ids.forEach( function( id ){
+      var tr = '<tr><td id="td_' + id + '" class="unchecked">' 
+
+        //. config or item 
+        + '<div><a href="#" id="category_' + id + '" onClick="show(\'' + id + '\'' + ( isConfig ? ',\'config\'' : '' ) + ');">' + id + '</a>'
+        + '<div id="layer_' + id + '" style="display:none; position: relative; margin-left: 15pt;" class="close"></div></div>'
+
+        + '</td><td><button class="btn btn-xs btn-success" onClick="editItem(\'' + id + '\'' + ( isConfig ? ', \'config\'' : '' ) + ');">Edit</button>'
+        + '<button class="btn btn-xs btn-warning" onClick="confirmDelete' + ( isConfig ? 'Config(' : 'Item(\'' + db + '\', ' ) + '\'' + id + '\');">Del</button>'
+
+        + '</td></tr>';
+      $('#item-table-body').append( tr );
+    });
+
+    if( isConfig ){
+      var tr = '<tr><td><textarea id="new-config" class="form-control">{\n  "name":"name",\n  "serverid":"1234567890",\n  "remote_addr":"192.168.0.1",\n  "url":"http://192.168.0.100",\n  "cron":"* * * * *"\n}</textarea></td>'
+        + '<td><button id="new-config-button" class="btn btn-xs btn-primary" onClick="createNewConfig();">Save</button></td></tr>';
+      $('#item-table-body').append( tr );
+    }else{
+      var tr = '<tr><td><textarea id="new-item" class="form-control">{\n  "name":"name",\n  "age":30\n}</textarea></td>'
+        + '<td><button id="new-item-button" class="btn btn-xs btn-primary" onClick="createNewItem(\'' + db + '\');">Save</button></td></tr>';
+      $('#item-table-body').append( tr );
+    }
+  }
+}
+
+async function show( id, isConfig ){
+  var objID = document.getElementById( "layer_" + id );
+  var buttonID = document.getElementById( "category_" + id );
+  if( objID.className == 'close' ){
+    objID.style.display = 'block';
+    objID.className = 'open';
+
+    //. 初回のみ詳細をロード
+    var layer = $('#layer_'+id).html();
+    if( !layer ){
+      var db = isConfig ? 'config' : $('#subtitle_span').html();
+
+      var result = await readItem( db, id );
+      if( result && result.status ){
+        if( isConfig ){
+          $('#layer_'+id).html( '<pre>' + JSON.stringify( result.config, null, 2 ) + '</pre>' );
+        }else{
+          $('#layer_'+id).html( '<pre>' + JSON.stringify( result.item, null, 2 ) + '</pre>' );
+        }
+
+        $('#td_'+id).removeClass( 'unchecked' );
+        $('#td_'+id).addClass( 'checked' );
+      }
+    }
+  }else{
+    objID.style.display = 'none';
+    objID.className = 'close';
+  }
+}
+</script>
+</head>
+<body>
+  <!-- //navi -->
+  <!--
+  <nav class="navbar navbar-default navbar-fixed-top">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="./">HATOYA</a>
+    </div>
+    <div class="collapse navbar-collapse target">
+      <ul class="nav navbar-nav navbar-right">
+      </ul>
+    </div>
+  </nav>
+  -->
+  <!-- navi// -->
+
+  <!-- //main -->
+  <div class="_container" style="padding:20px 0;">
+    <table class="table" id="main-table" style="width:100%;">
+      <tbody id="main-table-body">
+        <tr style="height:90%;">
+          <td width="15%">
+            <div class="logo">
+              <img src="./imgs/hato.png" id="logo" title="" height="40"/>HATOYA
+            </div>
+
+            <!-- //db list -->
+            <table class="table" id="db-table">
+              <tbody id="db-table-body">
+              </tbody>
+            </table>
+            <!-- db list// -->
+          </td>
+          <td>
+            <div class="subtitle" style="padding:50px 0 20px;">
+              <span>
+              <table style="width:100%;">
+                <tr>
+                  <td style="text-align: center;" width="90%">
+                    <table style="width:100%;">
+                    <tr>
+                    <td width="30%">
+                    </td>
+                    <td width="40%" class="subtitle">
+                    <span id="subtitle_span"></span>
+                    </td>
+                    <td width="30%">
+                    <form id="search_form">
+                    <input type="text" id="searchbar" style="display:none;" placeholder="search"/>
+                    </form>
+                    </td>
+                    </tr>
+                    </table>
+                  </td>
+                  <td style="text-align: right;">
+                    <button id="subtitle_button_span" class="btn btn-xs btn-danger" style="display: none;" onClick="confirmDeleteDb();">DELETE</button>
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- //item list -->
+            <div id="item-list">
+              <table class="table" id="item-table">
+                <tbody id="item-table-body">
+                </tbody>
+              </table>
+            </div>
+            <!-- item list// -->
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- main// -->
+
+  <div class="modal bd-example-modal-lg fade" id="dashboardModal" tabindex="-1" role="dialog" aria-labbelledby="dashboardModal" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title" id="dashboardModalLabel"></h4>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body" id="dashboardmodal-body">
+          <table class="table table-bordered">
+            <tbody id="dashboard_body">
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer btn-center">
+          <!--
+          <button type="button" class="btn btn-danger btn-xs py-0" onClick="generateSiritori();"></button>
+          -->
+          <button type="button" class="btn btn-info btn-xs py-0" onClick="migrateFrom();"><i class="fas fa-file-export"></i></button>
+          <button type="button" class="btn btn-success btn-xs py-0" onClick="migrateTo();"><i class="fas fa-file-import"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

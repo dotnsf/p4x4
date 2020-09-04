@@ -1,0 +1,6 @@
+# Docker copy ignore patterns
+.git/
+.system/.hatoya/.serverid
+.system/.hatoya/.ledgers/1*
+package-lock.json
+settings.js.*

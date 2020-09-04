@@ -1,0 +1,325 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3c.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml">
+<head>
+<title><%= name %> - <%= room %></title>
+<meta charset="utf8"/>
+<meta http-equiv="pragma" content="no-cache"/>
+<script src="//code.jquery.com/jquery-2.2.4.min.js"></script>
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet"/>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+<link href="//use.fontawesome.com/releases/v5.8.1/css/all.css" rel="stylesheet"/>
+<script src="/socket.io/socket.io.js"></script>
+<link rel="stylesheet" type="text/css" href="./jquery.jqpuzzle.css"/>
+<script type="text/javascript" src="./jquery.jqpuzzle.min.js"></script>
+
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="P 4x4"/>
+
+<script>
+var uuid = generateUUID();
+var socketio = null;
+
+var base_url = location.origin + '/';
+
+var localVideo = null;
+var localStream = null;
+
+function gotLocalMediaStream( mediaStream ){
+  //console.log( mediaStream );  //. { id: "id", active: true, }
+  localStream = mediaStream;
+  localVideo.srcObject = mediaStream;
+
+  //. 定期的にスクリーンショットを画像化して送信
+  setInterval( function(){
+    video2image();
+  }, <%= intervalms %> );
+}
+
+function handleLocalMediaStreamError( error ){
+  console.log( "navigator.getUserMedia error: ", error );
+  alert( "navigator.getUserMedia error: " + error );
+}
+
+
+$(function(){
+  //. 画面サイズ取得
+  var sw = window.parent.screen.width;
+  var sh = window.parent.screen.height;
+  //sw : sh = x : 480; => x = 480 * sw / sh;
+  var x = Math.floor( 480 * sw / sh );
+  $('#video').css( { width: x } );
+  $('#canvas').css( { width: x } );
+  $('#img').css( { width: x, height: 480 } );
+
+  //. ヒストリバック無効化
+  if( window.history && window.history.pushState ){
+    history.pushState( "nohb", null, null );
+    $(window).on( "popState", function( evt ){
+      if( !event.originalEvent.state ){
+        history.pushState( "nohb", null, null );
+        return;
+      }
+    });
+  }
+
+  socketio = io.connect();
+
+  //. 初期化を通知
+  var name = $('#name').text();
+  var msg = {
+    uuid: uuid,
+    room: '<%= room %>',
+    name: name,
+    timestamp: ( new Date() ).getTime(),
+    width: x,
+    height: 480
+  };
+  socketio.json.emit( 'init_client', msg );
+
+  var mediaStreamConstraints = { video: true };
+  localVideo = document.querySelector( "video" );
+  navigator.mediaDevices.getDisplayMedia( mediaStreamConstraints ).then( gotLocalMediaStream ).catch( handleLocalMediaStreamError );
+
+  $('img.jqPuzzle').jqPuzzle( slide_settings, slide_texts );
+  var imagefile = document.getElementById( 'imagefile' );
+  imagefile.addEventListener( 'change', selectReadFile, false );
+
+  msg = {
+    uuid: uuid,
+    room: '<%= room %>',
+    name: name,
+    timestamp: ( new Date() ).getTime(),
+  };
+  socketio.json.emit( 'start_client', msg );
+});
+
+function generateUUID(){
+  //. Cookie の値を調べて、有効ならその値で、空だった場合は生成する
+  var did = null;
+  cookies = document.cookie.split(";");
+  for( var i = 0; i < cookies.length; i ++ ){
+    var str = cookies[i].split("=");
+    var une = unescape( str[0] );
+    if( une == " deviceid" || une == "deviceid" ){
+      did = unescape( unescape( str[1] ) );
+    }
+  }
+
+  if( did == null ){
+    var s = 1000;
+    did = ( new Date().getTime().toString(16) ) + Math.floor( s * Math.random() ).toString(16);
+  }
+
+  var dt = ( new Date() );
+  var ts = dt.getTime();
+  ts += 1000 * 60 * 60 * 24 * 365 * 100; //. 100 years
+  dt.setTime( ts );
+  var value = ( "deviceid=" + did + '; expires=' + dt.toUTCString() + '; path=/' );
+  if( isMobileSafari() ){
+    $.ajax({
+      url: '/setcookie',
+      type: 'POST',
+      data: { value: value },
+      success: function( r ){
+        //console.log( 'success: ', r );
+      },
+      error: function( e0, e1, e2 ){
+        //console.log( 'error: ', e1, e2 );
+      }
+    });
+  }else{
+    document.cookie = ( value );
+    //console.log( 'value: ', value );
+  }
+
+  return did;
+}
+
+function isMobileSafari(){
+  return ( navigator.userAgent.indexOf( 'Safari' ) > 0 && navigator.userAgent.indexOf( 'Mobile' ) > 0 );
+}
+
+function video2image(){
+  if( localStream ){
+    var canvas = document.getElementById( 'canvas' );
+    var ctx = canvas.getContext( '2d' );
+
+    var video = document.getElementById( 'video' );
+    var w = video.offsetWidth;
+    var h = video.offsetHeight;
+
+    canvas.setAttribute( "width", w );
+    canvas.setAttribute( "height", h );
+
+    ctx.drawImage( video, 0, 0, w, h );
+    var png = canvas.toDataURL( 'image/png' );
+
+    //. 画像を通知
+    var msg = {
+      uuid: uuid,
+      room: '<%= room %>',
+      comment: '',
+      timestamp: ( new Date() ).getTime(),
+      image_src: png
+    };
+    socketio.json.emit( 'image_client', msg );
+  }
+}
+</script>
+<script>
+function selectReadFile( e ){
+  var file = e.target.files;
+  var reader = new FileReader();
+  reader.onload = function(){
+    readDrawImg( reader, 0, 0 );
+  };
+  reader.readAsDataURL( file[0] );
+}
+
+function readDrawImg( reader, x, y ){
+  var img = readImg( reader );
+  img.onload = function(){
+    $('#slidegame_div').html( '<img id="slidegame_img" class="jqPuzzle"/>' );
+
+    var w = img.width;
+    var h = img.height;
+    $('#slidegame_img').prop( 'src', img.src );
+    $('#slidegame_img').prop( 'width', '80%' );
+    //h = parseInt( 600 * h / w );
+    //$('#slidegame_img').prop( 'height', '' + h );
+
+    var t = $('img.jqPuzzle');
+    t.jqPuzzle( slide_settings, slide_texts );
+
+    var msg = {
+      uuid: uuid,
+      room: '<%= room %>',
+      name: name,
+      timestamp: ( new Date() ).getTime(),
+    };
+    socketio.json.emit( 'start_client', msg );
+  };
+}
+
+function readImg( reader ){
+  var result_dataURL = reader.result;
+  var img = new Image();
+  img.src = result_dataURL;
+
+  return img;
+}
+</script>
+<style>
+html, body {
+  width: 100%;
+  height: 100%;
+  padding: 0px;
+  margin: 0px;
+}
+.hidetop{
+  position: absolute;
+  top: -500px;
+}
+.hide{
+  display: none;
+}
+label > input{
+  display:none;
+}
+label{
+  color: #aaa;
+  background-color: #006dd9;
+  padding: 10px;
+  border: double 4px #aaa;
+}
+#slidegame_img{
+  max-width: 100%;
+  height: auto;
+}
+</style>
+</head>
+<body>
+  <h3 id="name"><%= name %></h3>
+
+  <!-- Video element (live stream) -->
+  <div class="hidetop">
+    <video autoplay playsinline id="video" width="640" height="480"></video>
+  </div>
+
+  <!-- Canvas element (screenshot) -->
+  <div class="hide">
+    <canvas id="canvas" width="640" height="480"></canvas>
+  </div>
+
+  <label for="imagefile">
+    <i class="fas fa-camera"></i>
+    <input type="file" id="imagefile"/>
+  </label>
+  <br/>
+
+  <div id="slidegame_div">
+    <img id="slidegame_img" class="jqPuzzle" src="/imgs/zuncha.png"/>
+  </div>
+</div>
+
+<script>
+//. jquery puzzle
+var slide_settings = {
+  rows: 4,
+  cols: 4,
+  hole: 16,
+  shuffle: true,
+  numbers: true,
+  language: 'ja',
+  control: {
+    shufflePieces: false,
+    confirmShuffle: true,
+    toggleOriginal: true,
+    toggleNumbers: true,
+    counter: true,
+    timer: true,
+    pauseTimer: true
+  },
+  success: {
+    fadeOriginal: false,
+    callback: function( results ){
+      alert( '移動回数: ' + results.moves + '回, かかった時間: ' + results.seconds + '秒' );
+
+      var msg = {
+        uuid: uuid,
+        room: '<%= room %>',
+        name: name,
+        moves: results.moves,
+        seconds: results.seconds,
+        timestamp: ( new Date() ).getTime(),
+      };
+      socketio.json.emit( 'goal_client', msg );
+    },
+    callbackTimeout: 300
+  },
+  animation: {
+    shuffleRounds: 3,
+    shuffleSpeed: 800,
+    slidingSpeed: 200,
+    fadeOriginalSpeed: 600
+  },
+  style: {
+    gridSize: 2,
+    overlap: true,
+    backgroundOpacity: 0.1
+  }
+};
+var slide_texts = {
+  shuffleLabel: 'シャッフル',
+  toggleOriginalLabel: '元画像',
+  toggleNumbersLabel: '数値表示／非表示',
+  confirmShuffleMessage: 'シャッフルしてよろしいですか？',
+  movesLabel: '回',
+  secondsLabel: '秒'
+};
+</script>
+
+</body>
+</html>

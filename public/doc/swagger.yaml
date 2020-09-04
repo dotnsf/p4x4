@@ -1,0 +1,808 @@
+swagger: '2.0'
+info:
+  description: HATOYA API ドキュメント
+  version: 0.0.9
+  title: HATOYA REST APIs
+host: p4x4.mybluemix.net
+basePath: /api
+tags:
+  - name: ledgers
+    description: Blockchain related API
+  - name: dbs
+    description: DB related API
+  - name: items
+    description: Item related API
+  - name: configs
+    description: Config related API
+  - name: etc
+    description: Other API
+schemes:
+  - http
+  - https
+paths:
+  /ledgers:
+    get:
+      tags:
+        - ledgers
+      summary: ブロックチェーン取得
+      description: ブロックチェーン取得
+      produces:
+        - application/json
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: serverid
+          type: string
+          in: header
+          description: serverid
+          required: true
+        - name: limit
+          type: integer
+          in: query
+          description: limit
+        - name: offset
+          type: integer
+          in: query
+          description: offset
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /configs:
+    get:
+      tags:
+        - configs
+      summary: ネットワーク設定一覧取得
+      description: ネットワーク設定一覧取得
+      produces:
+        - application/json
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /config:
+    post:
+      tags:
+        - configs
+      summary: ネットワーク設定作成
+      description: ネットワーク設定作成
+      produces:
+        - application/json
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/ConfigRequest'
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /config/{_id}:
+    get:
+      tags:
+        - configs
+      summary: ネットワーク設定作成
+      description: ネットワーク設定作成
+      produces:
+        - application/json
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: id
+          type: string
+          in: path
+          description: Config ID
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    put:
+      tags:
+        - configs
+      summary: ネットワーク設定更新
+      description: ネットワーク設定更新
+      produces:
+        - application/json
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: id
+          type: string
+          in: path
+          description: Config ID
+          required: true
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/ConfigRequest'
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    delete:
+      tags:
+        - configs
+      summary: ネットワーク設定削除
+      description: ネットワーク設定削除
+      produces:
+        - application/json
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: id
+          type: string
+          in: path
+          description: Config ID
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /dbs:
+    get:
+      tags:
+        - dbs
+      summary: データベース一覧
+      description: データベース一覧
+      produces:
+        - application/json
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /{_db}:
+    get:
+      tags:
+        - items
+      summary: データ一覧
+      description: データベースに属するデータ id の一覧取得
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+        - name: limit
+          type: integer
+          in: query
+          description: limit
+        - name: offset
+          type: integer
+          in: query
+          description: offset
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    post:
+      tags:
+        - dbs
+      summary: データベースを作成する
+      description: データベースを作成する
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    delete:
+      tags:
+        - dbs
+      summary: 指定した１つのデータベースを削除する
+      description: （設定で許可されている場合、）\{_name\} で指定した名前のデータベースを一件削除する
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /{_db}/{_id}:
+    get:
+      tags:
+        - items
+      summary: データを取得する
+      description: \{_id\} で指定した id のデータを一件取得する
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+        - name: _id
+          type: string
+          in: path
+          description: id
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    post:
+      tags:
+        - items
+      summary: データを作成／更新する
+      description: \{_id\} で指定した id のデータを一件更新する
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+        - name: _id
+          type: string
+          in: path
+          description: id（未指定時、または "new" の時に新規作成）
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/ItemRequest'
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    delete:
+      tags:
+        - items
+      summary: データを削除する
+      description: \{_id\} で指定した id のデータを一件削除する
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+        - name: _id
+          type: string
+          in: path
+          description: id
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /{_db}/bulk:
+    post:
+      tags:
+        - items
+      summary: データをバルクインサートする
+      description: データをバルクインサートする
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/ItemsRequest'
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    put:
+      tags:
+        - items
+      summary: データをバルクアップデートする
+      description: データをバルクアップデートする
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/IdItemsRequest'
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    delete:
+      tags:
+        - items
+      summary: データをバルクデリートする
+      description: データをバルクデリートする
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/IdsRequest'
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /{_db}/attach:
+    post:
+      tags:
+        - items
+      summary: 添付データを作成する
+      description: 添付データを作成する
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+        - in: formData
+          name: file
+          type: file
+          description: アップロードするファイル
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /{_db}/attach/{_id}:
+    get:
+      tags:
+        - items
+      summary: 添付データを取得する
+      description: 添付データを取得する
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+        - name: _id
+          type: string
+          in: path
+          description: id
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    put:
+      tags:
+        - items
+      summary: 添付データを更新する
+      description: 添付データを更新する
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+        - name: _id
+          type: string
+          in: path
+          description: id
+          required: true
+        - in: formData
+          name: file
+          type: file
+          description: アップロードするファイル
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    delete:
+      tags:
+        - items
+      summary: 添付データを削除する
+      description: 添付データを削除する
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+        - name: _id
+          type: string
+          in: path
+          description: id
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /{_db}/search/{_text}:
+    get:
+      tags:
+        - items
+      summary: データを検索する
+      description: \{_text\} を含むデータを取得する
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: _db
+          type: string
+          in: path
+          description: データベース名
+          required: true
+        - name: _text
+          type: string
+          in: path
+          description: 検索テキスト
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+#  /validate:
+#    post:
+#      tags:
+#        - etc
+#      summary: ブロックの正当性確認
+#      description: ブロックが改ざんされていないことを確認する
+#      produces:
+#        - application/json
+#      parameters:
+#        - name: x-access-token
+#          type: string
+#          in: header
+#          description: token
+#      responses:
+#        '200':
+#          description: 成功
+#        '400':
+#          description: エラー
+#  /sync/{_id}:
+#    post:
+#      tags:
+#        - etc
+#      summary: 同期送信処理
+#      description: 同期送信処理
+#      produces:
+#        - application/json
+#      parameters:
+#        - name: x-access-token
+#          type: string
+#          in: header
+#          description: token
+#        - name: _id
+#          type: string
+#          in: path
+#          description: config id
+#          required: true
+#      responses:
+#        '200':
+#          description: 成功
+#        '400':
+#          description: エラー
+#  /reorg:
+#    post:
+#      tags:
+#        - etc
+#      summary: リオルグ処理
+#      description: リオルグ処理
+#      produces:
+#        - application/json
+#      parameters:
+#        - name: x-access-token
+#          type: string
+#          in: header
+#          description: token
+#      responses:
+#        '200':
+#          description: 成功
+#        '400':
+#          description: エラー
+  /singlenode_reorg:
+    post:
+      tags:
+        - etc
+      summary: シングルノードリオルグ処理
+      description: シングルノードリオルグ処理
+      produces:
+        - application/json
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /restore:
+    post:
+      tags:
+        - etc
+      summary: レストア
+      description: ネットワーク上のブロックチェーンノードから DB と設定をレストア
+      produces:
+        - application/json
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: url
+          type: string
+          in: formData
+          description: ブロックチェーンを持つノードの URL
+          required: true
+        - name: serverid
+          type: string
+          in: header
+          description: serverid
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /reset:
+    post:
+      tags:
+        - etc
+      summary: リセット処理
+      description: リセット処理
+      produces:
+        - application/json
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: serverid
+          type: string
+          in: header
+          description: serverid
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /token:
+    get:
+      tags:
+        - etc
+      summary: トークンを取得
+      description: アクセス制限が設定されている場合のトークンを取得
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /serverid:
+    get:
+      tags:
+        - etc
+      summary: サーバーIDを取得する
+      description: サーバーIDを取得する
+      produces:
+        - application/json
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /serveridfile:
+    get:
+      tags:
+        - etc
+      summary: サーバーIDファイルをダウンロードする
+      description: サーバーIDファイルをダウンロードする
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: serverid
+          type: string
+          in: header
+          description: serverid
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    post:
+      tags:
+        - etc
+      summary: サーバーIDファイルをアップロードする
+      description: サーバーIDファイルをアップロードする
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: x-access-token
+          type: string
+          in: header
+          description: token
+        - name: serverid
+          type: string
+          in: header
+          description: serverid
+          required: true
+        - in: formData
+          name: file
+          type: file
+          description: アップロードする .serverid ファイル
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+definitions:
+  BlockRequest:
+    type: object
+    properties:
+      name:
+        type: string
+        description: 名前
+      age:
+        type: integer
+        description: 年齢
+  ConfigRequest:
+    type: object
+    properties:
+      name:
+        type: string
+        description: 名前
+      remote_addr:
+        type: string
+        description: 同期リクエスト受付時の remote_addr の値
+      serverid:
+        type: string
+        description: 同期リクエスト受付時の serverid の値
+      url:
+        type: string
+        description: API endpoint
+      cron:
+        type: string
+        description: cron formatted schedule(* * * * *)
+  ItemRequest:
+    type: object
+    properties:
+      name:
+        type: string
+        description: 名前
+      age:
+        type: integer
+        description: 年齢
+  IdItemRequest:
+    type: object
+    properties:
+      id:
+        type: string
+        description: id
+      name:
+        type: string
+        description: 名前
+      age:
+        type: integer
+        description: 年齢
+  ItemsRequest:
+    type: array
+    items:
+      $ref: '#/definitions/ItemRequest'
+  IdItemsRequest:
+    type: array
+    items:
+      $ref: '#/definitions/IdItemRequest'
+  IdsRequest:
+    type: array
+    items:
+      type: string
